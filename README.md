@@ -1,2 +1,2 @@
 # System-Programming-Project-
-Implementation of Lexical, Syntax, and Semantic analysis for a Compiler Course.
+Implementation of Lexical, Syntax, and Semantic analysis for a System Programming course.
