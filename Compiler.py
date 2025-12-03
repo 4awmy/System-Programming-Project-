@@ -1,6 +1,4 @@
 import re
-
-
 # ==========================================
 # 1. LEXICAL ANALYSIS (The Tokenizer)
 # ==========================================
@@ -11,14 +9,18 @@ class Token:
 
     def __repr__(self):
         return f"Token({self.type}, {repr(self.value)})"
-
-
+#====================================================
+# 1.1 Lexical Operation Class
+#====================================================
 class Lexer:
     def __init__(self, text):
         self.text = text
         self.pos = 0
-        # Simple regex patterns for our language tokens
-        self.token_specs = [
+        self.tokens = []
+
+    def tokenize(self):
+        # A list that contains the tokens for the IF condition syntax
+        token_specification = [
             ('IF', r'\bif\b'),  # if keyword
             ('ELSE', r'\belse\b'),  # else keyword
             ('NUMBER', r'\d+'),  # Integer number
@@ -34,30 +36,25 @@ class Lexer:
             ('MISMATCH', r'.'),  # Any other character
         ]
 
-    def tokenize(self):
-        tokens = []
-        while self.pos < len(self.text):
-            match = None
-            for token_type, pattern in self.token_specs:
-                regex = re.compile(pattern)
-                match = regex.match(self.text, self.pos)
-                if match:
-                    value = match.group(0)
-                    if token_type == 'SKIP':
-                        pass  # Ignore whitespace
-                    elif token_type == 'MISMATCH':
-                        raise SyntaxError(f"Unexpected character: {value}")
-                    else:
-                        tokens.append(Token(token_type, value))
-                    self.pos = match.end()
-                    break
-            if not match:
-                raise SyntaxError("Lexer stuck at: " + self.text[self.pos:])
+        tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
 
-        tokens.append(Token('EOF', None))
-        return tokens
+        print(f"\n--- 1. Lexical Analysis (Tokenizing: '{self.text}') ---")
 
+        for mo in re.finditer(tok_regex, self.text):
+            kind = mo.lastgroup
+            value = mo.group()
 
+            if kind == 'SKIP':
+                continue
+            elif kind == 'MISMATCH':
+                raise RuntimeError(f'Lexical Error: Unexpected character {value!r}')
+
+            token = Token(kind, value)
+            self.tokens.append(token)
+            print(f"  [Found Token] Type: {kind:<10} Value: {value}")
+
+        self.tokens.append(Token('EOF', None))  # End of file marker
+        return self.tokens
 # ==========================================
 # 2. SYNTAX ANALYSIS (The Parser)
 # ==========================================
