@@ -1,33 +1,44 @@
-from Compiler import Lexer, Parser, SemanticAnalyzer, CodeGenerator, ProgramNode
+from Lexical_Analyzer import LexicalAnalyzer
+from ParserLogic import Parser
+from semantic import SemanticAnalyzer
+from codegen import CodeGenerator
+from ast_nodes import IfStatement, Assignment, BinOp, Variable, Number
 
 def print_ast(node, level=0):
     indent = "  " * level
-    if isinstance(node, ProgramNode):
-        print(f"{indent}Program")
-        for stmt in node.statements:
-            print_ast(stmt, level + 1)
-    elif hasattr(node, 'identifier') and hasattr(node, 'value'): # Assignment
-        print(f"{indent}Assignment: {node.identifier} = {node.value}")
-    elif hasattr(node, 'condition'): # If
-        print(f"{indent}If Statement")
-        print(f"{indent}  Condition: {node.condition.left} {node.condition.op} {node.condition.right}")
-        print(f"{indent}  Then Block:")
-        for stmt in node.then_branch:
-            print_ast(stmt, level + 3)
-        if node.else_branch:
-            print(f"{indent}  Else Block:")
-            for stmt in node.else_branch:
-                print_ast(stmt, level + 3)
+    if isinstance(node, IfStatement):
+        print(f"{indent}IfStatement")
+        print(f"{indent}  Condition:")
+        print_ast(node.condition, level + 2)
+        print(f"{indent}  Then Body:")
+        for stmt in node.then_body:
+            print_ast(stmt, level + 2)
+        if node.else_body:
+            print(f"{indent}  Else Body:")
+            for stmt in node.else_body:
+                print_ast(stmt, level + 2)
+    elif isinstance(node, Assignment):
+        print(f"{indent}Assignment: {node.name} = ...")
+        print_ast(node.value, level + 2)
+    elif isinstance(node, BinOp):
+        print(f"{indent}BinOp: {node.op}")
+        print_ast(node.left, level + 2)
+        print_ast(node.right, level + 2)
+    elif isinstance(node, Variable):
+        print(f"{indent}Variable: {node.name}")
+    elif isinstance(node, Number):
+        print(f"{indent}Number: {node.value}")
+    else:
+        print(f"{indent}Unknown Node: {node}")
 
 # Sample Code to Compile
-# This code contains an assignment, then an IF check using that variable
+# Note: ParserLogic only parses a single IF statement.
+# We assume 'x' is defined in the environment.
 source_code = """
-x = 10;
-y = 20;
 if (x > 5) {
-    z = 100;
+    y = 10;
 } else {
-    z = 0;
+    y = 0;
 }
 """
 
@@ -37,7 +48,7 @@ print("\n")
 
 # --- PHASE 1: LEXICAL ANALYSIS ---
 print("=== 2. Tokens (Lexical Analysis) ===")
-lexer = Lexer(source_code)
+lexer = LexicalAnalyzer(source_code)
 tokens = lexer.tokenize()
 for t in tokens:
     print(t)
@@ -45,6 +56,9 @@ print("\n")
 
 # --- PHASE 2: SYNTAX ANALYSIS ---
 print("=== 3. Parse Tree (Syntax Analysis) ===")
+# Remove EOF token for Parser if necessary, or Parser handles it?
+# LexicalAnalyzer appends EOF. ParserLogic checks self.pos < len(tokens).
+# Let's try passing tokens directly.
 parser = Parser(tokens)
 ast = parser.parse()
 print_ast(ast)
@@ -53,11 +67,18 @@ print("\n")
 # --- PHASE 3: SEMANTIC ANALYSIS ---
 print("=== 4. Semantic Checks ===")
 semantic_analyzer = SemanticAnalyzer()
-semantic_analyzer.analyze(ast)
+
+# Pre-define 'x' to simulate a global scope where x was previously declared
+print("LOG: Pre-defining variable 'x' in symbol table.")
+semantic_analyzer.symbol_table['x'] = 'int'
+
+semantic_analyzer.visit(ast)
+print("Semantic Analysis Passed: Symbol Table =", semantic_analyzer.symbol_table)
 print("\n")
 
-# --- PHASE 4: CODE GENERATION (BONUS) ---
+# --- PHASE 4: CODE GENERATION ---
 print("=== 5. Generated Target Code ===")
 codegen = CodeGenerator()
-target_code = codegen.generate(ast)
+codegen.visit(ast)
+target_code = codegen.get_output()
 print(target_code)
